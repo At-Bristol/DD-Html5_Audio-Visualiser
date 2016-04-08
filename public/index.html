@@ -1,0 +1,299 @@
+<html>
+<head>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+<script type="text/javascript">
+
+$( document ).ready(function(){init()})
+
+var audioContext = new AudioContext();
+var analyserContext;
+
+function init(){
+	
+
+	initAudio()
+}
+
+function initAudio() {
+        if (!navigator.getUserMedia)
+            navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        if (!navigator.cancelAnimationFrame)
+            navigator.cancelAnimationFrame = navigator.webkitCancelAnimationFrame || navigator.mozCancelAnimationFrame;
+        if (!navigator.requestAnimationFrame)
+            navigator.requestAnimationFrame = navigator.webkitRequestAnimationFrame || navigator.mozRequestAnimationFrame;
+
+    navigator.getUserMedia(
+        {
+            "audio": {
+                "mandatory": {
+                    "googEchoCancellation": "false",
+                    "googAutoGainControl": "false",
+                    "googNoiseSuppression": "false",
+                    "googHighpassFilter": "false"
+                },
+                "optional": []
+            },
+        }, gotStream, function(e) {
+            alert('Error getting audio');
+            console.log(e);
+        });
+
+
+function updateAnalysers(time) {
+
+	var canvas = document.getElementById("analyser");
+
+    if (!analyserContext) {
+        
+        analyserContext = canvas.getContext('2d');
+    }
+
+    canvasWidth = window.innerWidth;
+    canvasHeight = window.innerHeight;
+
+    analyserContext.canvas.width = canvasWidth;
+    analyserContext.canvas.height =  canvasHeight;
+
+
+    // analyzer draw code here
+    {
+
+  
+
+        var spacing = 0.8; 
+        var resolution = 300;
+        var numBars = resolution;
+        var freqByteData = new Uint8Array(analyserNode.frequencyBinCount);
+        var spectrumStart = -200
+
+        analyserNode.getByteFrequencyData(freqByteData); 
+
+        analyserContext.clearRect(0, 0, canvasWidth, canvasHeight);
+        analyserContext.fillStyle = '#F6D565';
+        analyserContext.lineCap = 'round';
+        var multiplier = analyserNode.frequencyBinCount / numBars;
+
+
+
+		var arcSize = (360/resolution) - spacing;
+		var arcThickness = 5;
+		var border = 50;
+		var domeCenterX= canvasWidth/2;
+		var domeCenterY= canvasHeight/2;
+		var domeRadius = Math.min(canvasWidth/2, canvasHeight/2) - border;
+		var magnitude = 0;
+		var startingHue = 200;
+		var colourSensitvity = 1.3
+		var sensitivityCutoff = 0;
+		var reactionEnum = { 
+			exp: 1,
+			log: 2,
+			negexp: 3,
+			lin: 4,
+
+		}
+
+		arcSize = Math.toRadians(arcSize)
+		
+
+		var reactionCurve = reactionEnum.exp;
+
+
+		function fractionToRadians(numerator, denominator){
+				return ((numerator * 2/denominator)-1) * Math.PI ;
+			} 
+
+
+		      bassHit = Math.max(extractFreqRange(100,500,freqByteData)-20,0);
+			 analyserContext.beginPath()
+	            analyserContext.arc(domeCenterX,domeCenterY,domeRadius, 0, 2*Math.PI)
+	            var grd = analyserContext.createRadialGradient(domeCenterX,domeCenterY,0,domeCenterX,domeCenterY,Math.pow(bassHit,2)/10);
+	            grd.addColorStop(0,"hsl(" + 200 + ", 100%, " + Math.pow(bassHit,2)/100 + "%)")
+				grd.addColorStop(1,"black");                          
+	            analyserContext.fillStyle=grd;
+	            analyserContext.fill();
+	            
+	            analyserContext.closePath();
+
+			
+
+        // Draw rectangle for each frequency bin.
+         for (var i = 0; i < numBars; ++i) {
+            var offset = Math.floor( i * multiplier );
+            // gotta sum/average the block, or we miss narrow-bandwidth spikes
+            for (var j = 0; j< multiplier; j++)
+                magnitude += freqByteData[offset + j];
+            magnitude = magnitude / multiplier;
+            var magnitude2 = freqByteData[i * multiplier];
+
+          
+
+	            //start point for circle
+	            arcStart = fractionToRadians(i , numBars)+(Math.toRadians(spectrumStart));
+
+
+	            magnitude = Math.max(magnitude - sensitivityCutoff,0);
+	            
+	            if(reactionCurve == 1){
+	               magnitude = Math.pow(magnitude, 2)/300;
+	               //console.log("exp")
+	    		};
+	    		if(reactionCurve == 2){
+	            	magnitude = Math.max(Math.log(magnitude),0) *20;
+	            	 //console.log("log")
+	            };
+	            if(reactionCurve == 3){
+	            	magnitude = Math.pow(magnitude, -1/2)/100;
+	            };
+
+
+	            analyserContext.beginPath()
+	            analyserContext.arc(domeCenterX,domeCenterY,domeRadius, arcStart, arcStart + arcSize)
+	            analyserContext.strokeStyle = "hsl( 100, 0%, " + (100 - Math.round((i*100)/numBars))  + "%)"
+	            analyserContext.lineWidth = arcThickness;
+	            analyserContext.stroke();
+	            analyserContext.closePath();
+
+
+	            analyserContext.beginPath()
+	            analyserContext.arc(domeCenterX,domeCenterY,Math.max(domeRadius - magnitude,0), arcStart, arcStart +  arcSize )
+	            analyserContext.strokeStyle = "hsl(" + ((magnitude * colourSensitvity) + startingHue)+ ", 100%, 50%)" // Math.round((i*100)/numBars)
+	            analyserContext.lineWidth = arcThickness;
+	            analyserContext.stroke();
+	            analyserContext.closePath();
+
+            //analyserContext.fillStyle = "hsl( 100, 0%, " + Math.round((i*100)/numBars) + "%)"; // Math.round((i*360)/numBars)  
+            //analyserContext.fillRect(Math.cos(i/numBars)*1000, Math.sin(i/numBars)*1000, BAR_WIDTH, -magnitude*5;
+        }
+
+    }
+    
+    rafID = window.requestAnimationFrame( updateAnalysers );
+}
+
+
+
+function gotStream(stream) {
+    inputPoint = audioContext.createGain();
+
+    // Create an AudioNode from the stream.
+    realAudioInput = audioContext.createMediaStreamSource(stream);
+    audioInput = realAudioInput;
+    audioInput.connect(inputPoint);
+
+//    audioInput = convertToMono( input );
+
+    analyserNode = audioContext.createAnalyser();
+    analyserNode.fftSize = 2048;
+    inputPoint.connect( analyserNode );
+
+    //audioRecorder = new Recorder( inputPoint );
+
+    zeroGain = audioContext.createGain();
+    zeroGain.gain.value = 0.0;
+    inputPoint.connect( zeroGain );
+    zeroGain.connect( audioContext.destination );
+    updateAnalysers();
+	}
+}
+
+function resizeCanvas(){
+
+
+	console.log("resize canvas")
+
+	var w = $(window).width();
+	var h = $(window).height(); 
+
+	console.log("h = " + h) 
+	console.log("w = " + w) 
+
+	$("#analyser").css("width", w + "px");
+    $("#analyser").css("height", h + "px"); 
+}
+
+  // Converts from degrees to radians.
+	Math.toRadians = function(degrees) {
+	  return degrees * Math.PI / 180;
+	};
+	 
+	// Converts from radians to degrees.
+	Math.toDegrees = function(radians) {
+	  return radians * 180 / Math.PI;
+	};
+
+
+
+
+	function extractFreqRange(start,end, byteData){
+		var sampleRate = 44100;
+		var fftSize   =   512;
+		var hzBandRange    =    sampleRate/(fftSize/2) 
+		var value = 0
+		var numberOfValues=0
+		i = 0
+		while(i*hzBandRange <= end){
+			if(i*hzBandRange >= start){
+				value += byteData[i]
+				numberOfValues++
+			} 
+		i++
+		}   
+
+		return  value/numberOfValues 
+
+	}
+
+
+	//make fullscreen
+    var fullscreen
+
+$(window).click(function(){
+    
+
+	
+    if(!fullscreen){
+	var el = document.documentElement
+    , rfs =
+           el.requestFullScreen
+        || el.webkitRequestFullScreen
+        || el.mozRequestFullScreen
+    ;
+    rfs.call(el);
+    fullscreen = true;
+	}else{
+		document.webkitExitFullscreen();
+		fullscreen = false;
+	}
+
+	  
+
+})
+
+
+</script>
+
+<style> 
+html, body {
+  width:  100%;
+  height: 100%;
+  margin: 0px;
+  background-color: black
+}
+
+#analyser { background-color: black}
+
+</style>
+
+
+</head>
+<body>
+
+	<div id="viz">
+		<canvas id="analyser" margin-left="auto" margin-right="auto" width="100%" height="100%" ></canvas>
+	</div>
+
+</body>
+</html>
+

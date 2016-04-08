@@ -1,0 +1,83 @@
+<html>
+<head>
+	<script type = "text/javascript">
+
+
+	window.addEventListener('load', draw);
+
+	var analyserContext;
+
+	function draw(){
+
+		 if (!analyserContext) {
+	        var canvas = document.getElementById("analyser");
+	        canvasWidth = canvas.width;
+	        canvasHeight = canvas.height;
+	        analyserContext = canvas.getContext('2d');
+	    }
+
+	    //draw
+			
+			numBars = 100;
+			barWidth = 20;
+			arcSize = 5;
+			domeRadius = 400;
+			var magnitude = 20;
+			function fractionToRadians(numerator, denominator){
+				return ((numerator * 2/denominator) -1) * Math.PI ;
+			} 
+
+	        // Draw rectangle for each frequency bin.
+	        for (var i = 0; i < numBars; ++i) {
+	            var magnitude = 20;
+	            var offset = Math.floor(100);
+	            analyserContext.fillStyle = "hsl( 100, 0%, " + Math.round((i*100)/numBars)  + "%)"; // Math.round((i*360)/numBars)  
+
+	            arcSize = Math.toRadians(arcSize)
+	            domeCenter = domeRadius + 100
+
+	            arcStart = fractionToRadians(i , numBars);
+	            arcY = Math.sin(fractionToRadians(i , numBars)) * domeRadius + domeCenter;
+
+	            console.log(arcStart)
+
+	            analyserContext.beginPath()
+	            analyserContext.arc(domeCenter,domeCenter,domeRadius, arcStart, arcStart+0.05 )
+	            analyserContext.strokeStyle = "hsl( 100, 0%, " + Math.round((i*100)/numBars)  + "%)"
+	            analyserContext.stroke();
+	            analyserContext.closePath();
+
+	            analyserContext.beginPath()
+	            analyserContext.arc(domeCenter,domeCenter,domeRadius-magnitude, arcStart, arcStart+0.05 )
+	            analyserContext.strokeStyle = "hsl( 100, 0%, " + Math.round((i*100)/numBars)  + "%)"
+	            analyserContext.stroke();
+	            analyserContext.closePath();
+
+	            //console.log(Math.cos(fractionToRadians(i , numBars)));//Math.sin(((i*2)/numBars) * Math.PI)
+	            //analyserContext.fillRect(Math.cos(fractionToRadians(i , numBars)) * domeRadius + domeCenter, 
+	            //						 Math.sin(fractionToRadians(i , numBars)) * domeRadius + domeCenter, 
+	            //						-magnitude, -magnitude);
+	        }
+	    }    
+
+	  // Converts from degrees to radians.
+	Math.toRadians = function(degrees) {
+	  return degrees * Math.PI / 180;
+	};
+	 
+	// Converts from radians to degrees.
+	Math.toDegrees = function(radians) {
+	  return radians * 180 / Math.PI;
+	};
+
+	</script>
+</head>
+<body>
+
+
+	<div id="viz">
+		<canvas id="analyser" width="1024" height="1024"></canvas>
+	</div>
+
+</body>
+</html>

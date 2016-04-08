@@ -1,0 +1,9 @@
+{
+  "firebase": "plt-domeaudioviz",
+  "public": "public",
+  "ignore": [
+    "firebase.json",
+    "**/.*",
+    "**/node_modules/**"
+  ]
+}
